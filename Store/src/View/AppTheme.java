@@ -33,8 +33,12 @@ public final class AppTheme {
     }
     public static HBox header(String title, String subtitle, Node... actions) {
         VBox heading = new VBox(5, title(title), muted(subtitle));
+        heading.setMinWidth(0); HBox.setHgrow(heading,Priority.ALWAYS);
+        Label date = new Label(java.time.LocalDate.now().format(java.time.format.DateTimeFormatter.ofPattern("d MMM yyyy", java.util.Locale.ENGLISH)));
+        date.getStyleClass().add("header-date");
         Region spacer = new Region(); HBox.setHgrow(spacer, Priority.ALWAYS);
         HBox header = new HBox(12, heading, spacer);
+        header.getChildren().add(date);
         header.getChildren().addAll(actions); header.setAlignment(javafx.geometry.Pos.CENTER_LEFT);
         return header;
     }

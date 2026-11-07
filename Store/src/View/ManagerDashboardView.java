@@ -139,7 +139,7 @@ public class ManagerDashboardView {
         VBox layout = new VBox(15);
         layout.setPadding(new Insets(20));
         AppTheme.primary(addItemButton); AppTheme.danger(removeItemButton);
-        AppTheme.table(inventoryTable, "No inventory yet. Add your first item above.");
+        AppTheme.table(inventoryTable, "No products yet. Add one above.");
         AppTheme.table(supplierTable, "Suppliers appear when you add inventory.");
         Tab inventoryTab = new Tab("Inventory", inventoryTable);
         Tab suppliersTab = new Tab("Suppliers", supplierTable);
@@ -147,7 +147,7 @@ public class ManagerDashboardView {
         TabPane records = new TabPane(inventoryTab, suppliersTab);
         records.setMinHeight(260); VBox.setVgrow(records, Priority.ALWAYS);
         layout.getChildren().addAll(
-            AppTheme.header("Inventory & suppliers", "Keep products, prices, and stock up to date.", viewStatisticsButton, logoutButton),
+            AppTheme.header("Stockroom", "Products & the people who supply them", viewStatisticsButton, logoutButton),
             AppTheme.card(createInputGrid(), createButtonBox()), searchField, records);
         return layout;
     }

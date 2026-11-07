@@ -40,7 +40,7 @@ public class StatisticsView {
         lowStock=table("SKU","Product","Stock","Supplier");
         movements=table("When","SKU","Product","Change","Reason","User");
         tabs=new TabPane(tab("Sales",sales),tab("Best sellers",products),tab("Low stock (current)",lowStock),tab("Stock history",movements));
-        VBox layout=new VBox(22,AppTheme.header("Sales & inventory reports","Date filters apply to sales, best sellers, and stock history. Low stock shows current inventory.",back),filters,metrics,tabs);
+        VBox layout=new VBox(22,AppTheme.header("The shop ledger","Sales & stock for your chosen dates. Low stock always shows today?s quantities.",back),filters,metrics,tabs);
         layout.setPadding(new javafx.geometry.Insets(28)); VBox.setVgrow(tabs,Priority.ALWAYS);
         Scene scene=new Scene(layout,1200,820); AppTheme.apply(scene,stage); stage.setMinWidth(1050);
         stage.setScene(scene); stage.setTitle("Manager Statistics"); refresh(); stage.show();
@@ -66,7 +66,7 @@ public class StatisticsView {
             String[] values={""+summary.bills(),""+summary.units(),Money.format(summary.revenue()),Money.format(summary.profit())};
             for(int i=0;i<labels.length;i++) {
                 Label value=new Label(values[i]); value.getStyleClass().add("metric");
-                VBox card=AppTheme.card(AppTheme.muted(labels[i]),value); HBox.setHgrow(card,Priority.ALWAYS); card.setMaxWidth(Double.MAX_VALUE); cards.getChildren().add(card);
+                VBox card=new VBox(8,AppTheme.muted(labels[i]),value); card.getStyleClass().add("report-metric"); HBox.setHgrow(card,Priority.ALWAYS); card.setMaxWidth(Double.MAX_VALUE); cards.getChildren().add(card);
             }
             metrics.getChildren().setAll(cards);
             salesRows=rows("Bill","Date","Net units","Net revenue","Net profit","Refunded");

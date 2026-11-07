@@ -39,10 +39,11 @@ This preserves existing hashes and creates `passwords.txt.backup` once. Keep cre
 
 ## Checkout
 
-1. Select a product and enter a positive quantity, or scan a barcode into the barcode field and press Enter. SKU lookup is also supported.
-2. Inspect the current cart, unit prices, subtotals, and total. Change quantities or remove lines as needed. Cancel Sale discards the draft without changing stock.
-3. Finalize Bill records the sale and reduces stock in **one SQLite transaction**. A failed write rolls back stock, bill history, and stock movements; the cart stays available for retry.
-4. The Completed Sales tab shows today's sales. Process Return restores the original product's stock and reduces its net bill value in one transaction.
+1. Click a product tile to add one unit. Search by product name/category, scan a barcode, or enter a SKU in the single search field. Press Enter to add an exact match or the only search result. Category filters narrow the catalog; Ctrl+F focuses search.
+2. Change quantities with the inline minus/plus buttons. Remove deletes a line. Tiles show stock remaining after the current order, including low-stock and unavailable states.
+3. Complete Sale shows the order total and stays disabled while the order is empty. It records the sale and reduces stock in **one SQLite transaction**. A failed write rolls back stock, bill history, and stock movements; the order stays available for retry.
+4. Completion shows a brief banner and clears the order for the next customer. Cancel Order discards the draft after confirmation; leaving an active order through Log Out also asks for confirmation.
+5. Sales Today shows completed sales and the Process Return action. Returns restore the original product's stock and reduce the net bill value in one transaction.
 
 Receipts are text files. Prices and purchase costs are snapshots, so later product-price changes do not change historical sale values. Monetary calculations use `BigDecimal`; SQLite stores integer cents. Price inputs accept at most two decimal places.
 

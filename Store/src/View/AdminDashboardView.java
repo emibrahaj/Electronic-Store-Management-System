@@ -40,20 +40,28 @@ public class AdminDashboardView {
         Label welcomeLabel = new Label("Welcome, Admin");
         welcomeLabel.setFont(Font.font("Arial", FontWeight.BOLD, 20));
 
-        header.getChildren().add(AppTheme.header("Store administration", "Manage your team and store access."));
+        HBox heading = AppTheme.header("The shop desk", "Staff, accounts & permissions");
+        HBox.setHgrow(heading,Priority.ALWAYS);
+        header.getChildren().add(heading);
         header.setPadding(new Insets(24));
 
         VBox sidebar = new VBox(20);
         sidebar.getStyleClass().add("sidebar");
         sidebar.setPadding(new Insets(24, 16, 24, 16));
         sidebar.setPrefWidth(210);
-        sidebar.getChildren().add(new Label("STOREPOS  /  ADMIN"));
+        sidebar.getChildren().add(new Label("storepos.  /  staff"));
         //create buttons on the left side
-        Button manageEmployeesButton = createSidebarButton("Manage Employees");
-        Button viewReportsButton = createSidebarButton("View Reports");
-        Button accessLevelButton = createSidebarButton("View Access");
+        Button manageEmployeesButton = createSidebarButton("Staff");
+        Button viewReportsButton = createSidebarButton("Reports");
+        Button accessLevelButton = createSidebarButton("Permissions");
         Button logoutButton = createSidebarButton("Logout");
 
+        manageEmployeesButton.getStyleClass().add("selected");
+        java.util.List<Button> navigation = java.util.List.of(manageEmployeesButton, viewReportsButton, accessLevelButton);
+        for (Button item : navigation) item.addEventHandler(javafx.event.ActionEvent.ACTION, event -> {
+            navigation.forEach(button -> button.getStyleClass().remove("selected"));
+            item.getStyleClass().add("selected");
+        });
         manageEmployeesButton.setOnAction(e -> showEmployeeManagement());
         viewReportsButton.setOnAction(e -> showReports());
         accessLevelButton.setOnAction(e -> showAccessLevels());
@@ -114,7 +122,7 @@ public class AdminDashboardView {
     private void showEmployeeManagement() {
         contentArea.getChildren().clear();
 
-        Label contentTitle = new Label("Employee Management");
+        Label contentTitle = new Label("The team");
         contentTitle.getStyleClass().add("section-title");
 
         GridPane form = createEmployeeForm();
@@ -266,7 +274,7 @@ public class AdminDashboardView {
             Model.Manager manager=new Model.Manager("reporting","","Reporting","","");
             new StatisticsView(stage,new Controller.ManagerController(manager),() -> show(stage)).show();
         });
-        contentArea.getChildren().addAll(title, AppTheme.muted("Your team at a glance."), cards,salesReports);
+        contentArea.getChildren().addAll(title, AppTheme.muted("Current staff accounts"), cards,salesReports);
     }
 
     public void setNavigator(AppNavigator navigator) {

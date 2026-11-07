@@ -18,11 +18,11 @@ public class LoginView {
         boolean setup = AuthService.needsSetup();
         usernameField = new TextField(); usernameField.setPromptText("Username");
         passwordField = new PasswordField(); passwordField.setPromptText("Password");
-        statusLabel = AppTheme.muted(setup ? "Create the administrator account for this store." : "Sign in with your username and password.");
+        statusLabel = AppTheme.muted(setup ? "Create the administrator account for this store." : "Enter your details to open the shop.");
         loginButton = AppTheme.primary(new Button(setup ? "Create administrator" : "Sign in"));
         loginButton.setMaxWidth(Double.MAX_VALUE); loginButton.setDefaultButton(true);
-        Label brand = new Label("StorePOS"); brand.getStyleClass().add("login-brand");
-        VBox card = AppTheme.card(AppTheme.title(setup ? "Set up your store" : "Welcome back"), statusLabel,
+        Label brand = new Label("storepos."); brand.getStyleClass().add("login-brand");
+        VBox card = AppTheme.card(AppTheme.title(setup ? "Set up your store" : "Hello again."), statusLabel,
                 AppTheme.field("Username", usernameField), AppTheme.field("Password", passwordField));
         if (setup) {
             TextField name = new TextField(); TextField email = new TextField(); TextField phone = new TextField();
@@ -40,8 +40,9 @@ public class LoginView {
             controller = new LoginController(this,navigator);
             loginButton.setOnAction(e -> controller.loginAction());
         }
+        card.getStyleClass().add("login-card");
         card.getChildren().add(loginButton); card.setMaxWidth(420);
-        VBox layout = new VBox(20,brand,card,AppTheme.muted("Store operations, all in one place."));
+        VBox layout = new VBox(20,brand,card,AppTheme.muted("Staff access"));
         layout.setAlignment(javafx.geometry.Pos.CENTER); layout.setPadding(new javafx.geometry.Insets(32));
         ScrollPane scroll = new ScrollPane(layout); scroll.setFitToWidth(true); scroll.setFitToHeight(true);
         Scene scene = new Scene(scroll,820,setup ? 850 : 680); AppTheme.apply(scene,stage);
