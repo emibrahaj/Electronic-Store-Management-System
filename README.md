@@ -1,222 +1,122 @@
-# StorePOS - Retail Management System
+# StorePOS
 
-A desktop-based Point-of-Sale (POS) and Inventory Management System built with **Java** and **JavaFX**. Designed for retail stores to manage inventory, process bills, track suppliers, and generate sales statistics with role-based access control.
+JavaFX point of sale and store management application with SQLite transactions, stock history, employee roles, and CSV reporting.
 
-## Features
+## Run from source (Windows)
 
-✅ **Multi-Role Access Control**
-- Admin: Full system management and user administration
-- Manager: Inventory and supplier oversight
-- Cashier: Sales transactions and billing
-- User roles with authentication via credentials file
-
-✅ **Inventory Management**
-- Track items by category, supplier, purchase/selling price
-- Real-time stock level monitoring
-- Add/update/remove inventory items
-- Automated inventory persistence
-
-✅ **Billing & Sales**
-- Generate bills with itemized transactions
-- Calculate totals with selling prices
-- Bill history and tracking
-- Print-friendly bill format support
-
-✅ **Supplier Management**
-- Maintain supplier records
-- Track purchase relationships
-- Supplier-based inventory filtering
-
-✅ **Analytics Dashboard**
-- Sales statistics and reporting
-- Inventory analytics
-- Real-time data visualization
-
-✅ **Data Persistence**
-- Serialized data storage (DAT files)
-- Project-relative path management (works from any directory)
-- Automatic data backup in structured format
-
-## System Requirements
-
-- **Java**: 22 or higher
-- **JavaFX**: 21 or higher
-- **OS**: Windows, macOS, or Linux
-- **RAM**: 512 MB minimum
-- **Disk Space**: 100 MB for application + data
-
-## Project Structure
-
-```
-Store/
-├── src/                          # Source code
-│   ├── Controller/               # Business logic & event handlers
-│   │   ├── AdminController.java
-│   │   ├── LoginController.java
-│   │   ├── CashierController.java
-│   │   └── ManagerController.java
-│   ├── DAO/                      # Data Access Objects
-│   │   ├── AppPaths.java         # Centralized path management
-│   │   ├── BillDAO.java
-│   │   ├── InventoryDAO.java
-│   │   ├── SupplierDAO.java
-│   │   └── passwords.txt         # User credentials (DO NOT COMMIT)
-│   ├── Model/                    # Data models
-│   │   ├── User.java
-│   │   ├── Admin.java
-│   │   ├── Manager.java
-│   │   ├── Cashier.java
-│   │   ├── Item.java
-│   │   ├── Bill.java
-│   │   ├── Inventory.java
-│   │   ├── Supplier.java
-│   │   └── Role.java
-│   ├── View/                     # JavaFX UI components
-│   │   ├── LoginView.java
-│   │   ├── AdminDashboardView.java
-│   │   ├── ManagerDashboardView.java
-│   │   ├── CashierDashboardView.java
-│   │   └── StatisticsView.java
-│   ├── Main/
-│   │   └── Main.java             # Application entry point
-│   └── Database/                 # Generated data files (auto-created)
-│       ├── bills.dat
-│       ├── inventory.dat
-│       ├── suppliers.dat
-│       └── PrintableBills/
-├── bin/                          # Compiled bytecode
-├── build.fxbuild                 # JavaFX build configuration
-└── .project / .classpath         # Eclipse project files
-
-```
-
-## Getting Started
-
-### 1. Prerequisites
-
-Ensure Java 22+ and JavaFX 21+ are installed:
+Install JDK 21, then run from the repository root:
 
 ```powershell
-java -version
+.\build.ps1 -Run
 ```
 
-### 2. Running the Application
+On a fresh checkout, the build downloads pinned JavaFX 21 and SQLite JDBC dependencies from Maven Central into `.build/`. You can download them separately with `.\setup.ps1`. If you have a JavaFX 21 SDK, pass `-JavaFxLib "C:\path\to\javafx-sdk-21\lib"` or set `JAVAFX_LIB`.
 
-**Option A: From the Store directory (Recommended)**
+With Maven installed, import `Store/pom.xml` into your IDE or run:
 
 ```powershell
 cd Store
-java -p "path\to\javafx-sdk-21\lib" --add-modules javafx.controls,javafx.fxml -cp "bin" Main.Main
+mvn compile javafx:run
 ```
 
-**Option B: Using IDE (Eclipse/IntelliJ)**
+The legacy Eclipse `.classpath` expects a user library named `javafx21`. Maven import is recommended because it also resolves SQLite JDBC.
 
-1. Import the `Store` folder as an Eclipse project
-2. Right-click project → Run As → Java Application
-3. Select `Main.Main` as the main class
+## Login and first-run setup
 
-### 3. First Time Setup
+Sign in using **username and password only**. The application determines the role from the stored account. Existing accounts remain usable; email, phone, and role are no longer login fields.
 
-- The app automatically creates required data files in `Store/src/Database/`
-- **Credentials**: Edit `Store/src/DAO/passwords.txt` to add users in format:
-  ```
-  username,password,email,phonenumber,role
-  admin,admin123,admin@store.com,1234567890,admin
-  manager,mgr123,manager@store.com,0987654321,manager
-  cashier,cash123,cashier@store.com,5555555555,cashier
-  ```
+A new store opens an administrator setup screen. Choose your own username, password, name, email, and phone number. No default accounts are created. Sign in after setup and use the administrator dashboard to create managers and cashiers.
 
-## Usage
+An administrator can add, edit, and delete employees. Leave the password blank when editing to preserve it. The application prevents deletion or demotion of the last administrator and prevents changing the active administrator's username or role. Employee operations and checkout/inventory mutations enforce role permissions.
 
-### Login
-1. Start the application
-2. Enter credentials (username, password, email, phone) and select role
-3. Click "Login"
-
-### Admin Dashboard
-- Manage user accounts
-- View system statistics
-- Access full application controls
-
-### Manager Dashboard
-- Manage inventory (add/edit/delete items)
-- Manage suppliers
-- Monitor stock levels
-
-### Cashier Dashboard
-- Process sales transactions
-- Generate and print bills
-- View recent transaction history
-
-### Statistics View
-- View sales analytics
-- Monitor inventory trends
-- Generate reports
-
-## Data Files Location
-
-All data is stored in project-relative paths (works from any directory):
-
-- **Bills**: `Store/src/Database/bills.dat`
-- **Inventory**: `Store/src/Database/inventory.dat`
-- **Suppliers**: `Store/src/Database/suppliers.dat`
-- **Credentials**: `Store/src/DAO/passwords.txt`
-- **Printable Bills**: `Store/src/Database/PrintableBills/`
-
-## Building from Source
-
-If using Eclipse/Maven:
+New passwords are salted PBKDF2 hashes. Legacy plaintext passwords remain accepted for compatibility; after compiling, you can migrate them with:
 
 ```powershell
-cd Store
-javac -d bin -sourcepath src src/Main/Main.java
+java "-Dstore.home=$PWD/Store" -cp .build/classes DAO.PasswordMigrationUtil
 ```
 
-Or use your IDE's build function (right-click → Build).
+This preserves existing hashes and creates `passwords.txt.backup` once. Keep credentials and that backup private.
 
-## Troubleshooting
+## Checkout
 
-### "File not found" errors
-- Ensure you're running from the `Store/` directory or its parent
-- Check that `passwords.txt` exists in `Store/src/DAO/`
-- Verify JavaFX path is correctly set
+1. Select a product and enter a positive quantity, or scan a barcode into the barcode field and press Enter. SKU lookup is also supported.
+2. Inspect the current cart, unit prices, subtotals, and total. Change quantities or remove lines as needed. Cancel Sale discards the draft without changing stock.
+3. Finalize Bill records the sale and reduces stock in **one SQLite transaction**. A failed write rolls back stock, bill history, and stock movements; the cart stays available for retry.
+4. The Completed Sales tab shows today's sales. Process Return restores the original product's stock and reduces its net bill value in one transaction.
 
-### "Module not found: javafx"
-- Ensure JavaFX SDK is in your CLASSPATH
-- Add `--add-modules javafx.controls,javafx.fxml` to JVM args
+Receipts are text files. Prices and purchase costs are snapshots, so later product-price changes do not change historical sale values. Monetary calculations use `BigDecimal`; SQLite stores integer cents. Price inputs accept at most two decimal places.
 
-### Data not persisting
-- Check file permissions in `Store/src/Database/`
-- Ensure sufficient disk space available
+## Products and stock
 
-## Technologies Used
+Managers add products and suppliers, edit prices/stock/barcodes, add stock, and remove products. Every product has a permanent generated SKU and an optional unique barcode. Barcodes accept up to 64 letters, digits, underscores, or hyphens. Keyboard-style barcode scanners work with the checkout scan field.
 
-- **Java 22** - Core language
-- **JavaFX 21** - Desktop UI framework
-- **Serialization** - Data persistence
-- **Git** - Version control
+Stock movements record the SKU, product, quantity change, timestamp, operation reason, and signed-in username. Sales and returns include the bill number in the reason. Only one application process may open a given store at a time, preventing competing windows from overwriting each other's state.
 
-## Contributors
+## Reports and exports
 
-This project was developed as a collaborative effort at **Epoka University**:
+Managers open View Statistics; administrators open View Reports, then Open Sales & Inventory Reports.
 
-- **Emi Brahaj**
-- **Era Malaj**
-- **Erla Luzi**
+- Choose inclusive start/end dates to see net sales, unit counts, revenue, and profit.
+- Sales lists each bill and its net value after returns.
+- Best Sellers aggregates net units, revenue, and profit by SKU.
+- Low Stock shows current products with five or fewer units; it is independent of the chosen dates.
+- Stock History shows movements in the selected dates, including reasons and users.
+- Export Selected Report saves the active table as UTF-8 CSV, with escaped fields suitable for spreadsheet use.
 
-## Future Enhancements
+Reports attribute a returned sale's revised net value to the original sale date. Profit is selling price minus purchase cost; it does not include tax, overhead, or fees.
 
-- Database integration (MySQL/PostgreSQL)
-- PDF report generation
-- Barcode scanning support
-- Multi-location support
-- Email receipt functionality
-- Advanced analytics & forecasting
+## Data, migration, and backups
 
-## License
+Source runs store data under `Store/src/DAO/`:
 
-MIT License - Feel free to use and modify for personal or commercial use.
+- `store.db`: SQLite products, bills, line items, suppliers, stock movements, and migration metadata.
+- `passwords.txt`: employee accounts.
+- `audit.log`: application audit log.
+- `store.lock`: process lock; the file can remain after exit, while the operating-system lock is released.
 
-## Support
+Receipts are under `Store/src/Database/PrintableBills/`. Override the store location when launching Java with `-Dstore.home=/absolute/path/to/StoreHome`.
 
-For issues or questions, refer to the project documentation or contact the development team.
+On first database access, the app imports existing `inventory.dat`, `bills.dat`, and `suppliers.dat` together in a transaction. Duplicate legacy supplier-product links are deduplicated. The originals remain unchanged, and completed migration is recorded so restarting does not import them again. An invalid legacy file cancels migration rather than silently discarding records. Already-corrupted historical prices or quantities cannot be reconstructed automatically.
+
+Packaged applications use `%USERPROFILE%\.storepos` by default. To move an existing store, close the application and copy its `src/DAO` and receipt directories into that store home. Copy old `.dat` files before the packaged app's first run if you want them imported. If its database has already been initialized, use a fresh store home instead of replacing records in a live database.
+
+Back up `store.db`, `passwords.txt`, and receipts while the app is closed. The app is intended for one local store process, not simultaneous clients or shared network drives.
+
+## Build the bundled application and installer
+
+```powershell
+.\package.ps1            # Self-contained app folder
+.\package.ps1 -Installer # App folder plus Windows MSI installer
+```
+
+Output goes into a timestamped folder under `dist/`. Run `StorePOS/StorePOS.exe` directly, or install the MSI. Both include the Java runtime, JavaFX, and SQLite; end users do not need a JDK or environment variables. The MSI is per-user and creates menu/desktop shortcuts. The app does not include development data or credentials.
+
+The packaging script uses JDK 21 `jpackage`. For MSI output, it downloads WiX build tools into `.build/tools` if they are unavailable. Nothing is installed globally by the build. Packages are unsigned. Build Windows packages on Windows; other platforms need their own build and matching JavaFX libraries.
+
+## Tests and CI
+
+```powershell
+.\build.ps1 -Test -UiTest
+```
+
+The standalone suite checks setup/authentication, role restrictions, employee persistence, exact totals, cart edits/cancellation, barcode lookup, refunds, reporting, CSV escaping, and failed-write rollback. A separate test imports isolated copies of the repository's original serialized data. JavaFX smoke checks open the main screens and save previews under `.build/ui-preview/`. All tests use temporary store homes, never the real store's records.
+
+`.github/workflows/ci.yml` runs these checks on Windows for pushes and pull requests and uploads screen previews. The suite uses standalone Java runners, not JUnit; `mvn test` is not a substitute for the command above.
+
+## Layout
+
+- `Store/src/Controller`: operations and login routing.
+- `Store/src/DAO`: SQLite schema, transactions, legacy import, passwords, audit logging.
+- `Store/src/Model`: products, inventory, users, suppliers, bills.
+- `Store/src/Util`: money, session permissions, reporting, navigation.
+- `Store/src/View`: JavaFX screens and shared theme.
+- `Store/test`: regression, migration, and UI checks.
+- `setup.ps1`, `build.ps1`, `package.ps1`: dependencies, validation, distribution.
+
+## Build references
+
+- [Oracle jpackage documentation](https://docs.oracle.com/en/java/javase/21/jpackage/packaging-overview.html)
+- [SQLite JDBC](https://github.com/xerial/sqlite-jdbc)
+- [WiX build tools](https://github.com/wixtoolset/wix3/releases/tag/wix3112rtm)
+
+Developed at Epoka University by Emi Brahaj, Era Malaj, and Erla Luzi.

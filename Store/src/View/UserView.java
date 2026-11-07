@@ -37,7 +37,7 @@ public class UserView {
         TableColumn<User, String> accessColumn = createColumn("Access", User::getAccessLevel);
 
         tableView.getColumns().addAll(usernameColumn, nameColumn, roleColumn, emailColumn, phoneColumn, accessColumn);
-        tableView.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY);
+        tableView.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY_FLEX_LAST_COLUMN);
     }
 
     private TableColumn<User, String> createColumn(String title, java.util.function.Function<User, String> mapper) {

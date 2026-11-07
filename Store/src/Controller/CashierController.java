@@ -17,20 +17,23 @@ public class CashierController {
 
 
     public void addItemToBill(String itemName, int quantity) {
-        // Create a new bill if there is no active bill
-        if (cashier.getCurrentBill() == null) {
-            cashier.createNewBill(); // Create a new bill if none exists
-        }
-
         Item item = inventory.findItemByName(itemName);
-        if (item != null && item.getStock() >= quantity) {
-            item.setQuantity(quantity);  // Set the quantity for the current item in the bill
-            cashier.addItemToCurrentBill(item, quantity);  // Add item to the current bill
-        } else {
-            System.out.println("Error: Item is out of stock or does not exist.");
-        }
+        if (item == null) throw new IllegalArgumentException("Item does not exist.");
+        cashier.addItemToCurrentBill(item, quantity);
     }
 
+
+    public List<Item> getCartItems() {
+        return cashier.getCurrentBill() == null ? java.util.List.of() : cashier.getCurrentBill().getItems();
+    }
+    public void updateCartQuantity(String sku, int quantity) { cashier.updateCartQuantity(sku, quantity); }
+    public void cancelBill() { cashier.cancelBill(); }
+    public void scanBarcode(String barcode, int quantity) {
+        Item item = inventory.findByBarcode(barcode);
+        if (item == null) item = inventory.findBySku(barcode);
+        if (item == null) throw new IllegalArgumentException("No product matches that barcode or SKU.");
+        cashier.addItemToCurrentBill(item, quantity);
+    }
 
     public List<Bill> getTodaysBills() {
         return cashier.getTodaysBills();
@@ -38,8 +41,8 @@ public class CashierController {
 
     public double getTotalOfTodaysBills() {
         return cashier.getTodaysBills().stream()
-                .mapToDouble(Bill::getTotalAmount)
-                .sum();
+                .map(Bill::getNetAmount)
+                .reduce(java.math.BigDecimal.ZERO,java.math.BigDecimal::add).doubleValue();
     }
 
     public void finalizeBill() {

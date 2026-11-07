@@ -25,3 +25,19 @@ Store/.classpath
 # Local data files (if generated)
 Store/src/Database/
 Store/src/DAO/*.dat
+
+# Local dependencies, test output, and logs
+.build/
+**/target/
+logs/
+**/*.log
+**/passwords.txt.backup
+
+# SQLite and distributable builds
+**/*.db
+**/*.db-journal
+**/*.db-wal
+**/*.db-shm
+**/store.lock
+**/installation-check.txt
+dist/

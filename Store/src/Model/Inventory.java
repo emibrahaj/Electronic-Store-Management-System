@@ -15,6 +15,9 @@ public class Inventory implements Serializable {
     }
 
     public void addItem(Item item) {
+        if (item != null) validateValues(item.getPurchasePrice(), item.getSellingPrice(), item.getStock());
+        if (item == null || findItemByName(item.getItemName()) != null)
+            throw new IllegalArgumentException("Item already exists or is invalid.");
         items.add(item);
     }
 
@@ -31,7 +34,16 @@ public class Inventory implements Serializable {
         return null;
     }
 
+    public Item findBySku(String sku) {
+        return items.stream().filter(item -> item.getSku().equals(sku)).findFirst().orElse(null);
+    }
+    public Item findByBarcode(String barcode) {
+        if (barcode == null || barcode.isBlank()) return null;
+        return items.stream().filter(item -> item.getBarcode().equals(barcode)).findFirst().orElse(null);
+    }
+
     public void updateItem(String itemName, double purchasePrice, double sellingPrice, int stock) {
+        validateValues(purchasePrice, sellingPrice, stock);
         for (Item item : items) {
             if (item.getItemName().equalsIgnoreCase(itemName)) {
                 item.setPurchasePrice(purchasePrice);
@@ -40,7 +52,13 @@ public class Inventory implements Serializable {
                 return;
             }
         }
-        System.out.println("Item not found: " + itemName);
+        throw new IllegalArgumentException("Item not found: " + itemName);
+    }
+
+    private static void validateValues(double purchasePrice, double sellingPrice, int stock) {
+        if (!Util.InputValidator.isValidPrice(purchasePrice) || !Util.InputValidator.isValidPrice(sellingPrice)
+                || !Util.InputValidator.isValidQuantity(stock))
+            throw new IllegalArgumentException("Enter positive finite prices and stock between 0 and 999999.");
     }
 
     public List<Item> getItems() {

@@ -25,7 +25,7 @@ public class SharedContext {
     /**
      * Gets the singleton instance of SharedContext.
      * Creates one if it doesn't exist yet.
-     * 
+     *
      * @return the SharedContext instance
      */
     public static synchronized SharedContext getInstance() {
@@ -39,13 +39,13 @@ public class SharedContext {
      * Initializes shared resources (inventory, bills, etc.)
      */
     private void initializeResources() {
-        this.inventory = new Inventory();
+        this.inventory = DAO.InventoryDAO.loadInventory();
         this.bills = new ArrayList<>(BillDAO.loadBills());
     }
 
     /**
      * Gets the shared inventory instance.
-     * 
+     *
      * @return the inventory object, never null
      */
     public Inventory getInventory() {
@@ -57,7 +57,7 @@ public class SharedContext {
 
     /**
      * Sets the inventory instance.
-     * 
+     *
      * @param inventory the inventory to set
      */
     public void setInventory(Inventory inventory) {
@@ -66,7 +66,7 @@ public class SharedContext {
 
     /**
      * Gets the list of bills.
-     * 
+     *
      * @return the bills list, never null
      */
     public List<Bill> getBills() {
@@ -78,7 +78,7 @@ public class SharedContext {
 
     /**
      * Sets the bills list.
-     * 
+     *
      * @param bills the bills list to set
      */
     public void setBills(List<Bill> bills) {
@@ -87,7 +87,7 @@ public class SharedContext {
 
     /**
      * Gets the currently logged-in username.
-     * 
+     *
      * @return the username, or empty string if not logged in
      */
     public String getCurrentUsername() {
@@ -96,7 +96,7 @@ public class SharedContext {
 
     /**
      * Sets the currently logged-in username.
-     * 
+     *
      * @param username the username to set
      */
     public void setCurrentUsername(String username) {
@@ -105,7 +105,7 @@ public class SharedContext {
 
     /**
      * Gets the current user's role.
-     * 
+     *
      * @return the role, or empty string if not set
      */
     public String getCurrentUserRole() {
@@ -114,7 +114,7 @@ public class SharedContext {
 
     /**
      * Sets the current user's role.
-     * 
+     *
      * @param role the role to set
      */
     public void setCurrentUserRole(String role) {
@@ -123,7 +123,7 @@ public class SharedContext {
 
     /**
      * Checks if a user is currently logged in.
-     * 
+     *
      * @return true if username is set and not empty
      */
     public boolean isLoggedIn() {

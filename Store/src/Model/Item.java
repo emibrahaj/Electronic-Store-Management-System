@@ -8,6 +8,8 @@ public class Item implements Serializable {
     private static final long serialVersionUID = 1L;
 
     // Standard fields (Serializable)
+    private String sku = java.util.UUID.randomUUID().toString();
+    private String barcode = "";
     private String itemName;
     private String category;
     private String supplier;
@@ -90,6 +92,25 @@ public class Item implements Serializable {
     public void setQuantity(int quantity) { 
         this.quantity = quantity; 
         quantityProperty().set(quantity);  // Update the JavaFX property when quantity changes
+    }
+
+    public String getSku() {
+        if (sku == null || sku.isBlank()) sku = java.util.UUID.randomUUID().toString();
+        return sku;
+    }
+    public void restoreSku(String sku) { this.sku = java.util.Objects.requireNonNull(sku); }
+    public String getBarcode() { return barcode == null ? "" : barcode; }
+    public void setBarcode(String barcode) {
+        if (barcode == null || !barcode.matches("[A-Za-z0-9_-]{0,64}"))
+            throw new IllegalArgumentException("Barcode must contain at most 64 letters, numbers, underscores or hyphens.");
+        this.barcode = barcode;
+    }
+    public java.math.BigDecimal getPurchaseAmount() { return Util.Money.of(purchasePrice); }
+    public java.math.BigDecimal getSellingAmount() { return Util.Money.of(sellingPrice); }
+    public Item copy() {
+        Item copy = new Item(itemName, category, supplier, purchasePrice, sellingPrice, stock);
+        copy.restoreSku(getSku()); copy.setBarcode(getBarcode()); copy.setQuantity(quantity);
+        return copy;
     }
 
     // JavaFX property getters (lazy initialization)

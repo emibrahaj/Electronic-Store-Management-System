@@ -15,26 +15,50 @@ public class Manager extends User {
 
     public Manager(String username, String password, String name, String email, String phoneNumber) {
         super(username, password, name, email, phoneNumber);
-        this.inventory = InventoryDAO.loadInventory();
+        setRole(Role.MANAGER);
+        this.inventory = Util.SharedContext.getInstance().getInventory();
         this.suppliers = SupplierDAO.loadSuppliers();
-        this.bills = BillDAO.loadBills();
+        this.bills = Util.SharedContext.getInstance().getBills();
     }
 
-    // Inventory Management Methods
+    private void change(String reason, Runnable operation) {
+        Util.Session.require(Role.MANAGER, Role.ADMIN);
+        List<Item> oldItems=inventory.getItems().stream().map(Item::copy).toList();
+        List<Supplier> oldSuppliers=new java.util.ArrayList<>();
+        for(Supplier supplier:suppliers) {
+            Supplier copy=new Supplier(supplier.getSupplierName(),supplier.getContactDetails());
+            for(Item item:supplier.getSuppliedItems())copy.addItem(item.copy());
+            oldSuppliers.add(copy);
+        }
+        try { operation.run(); DAO.StoreDatabase.saveInventoryAndSuppliers(inventory,suppliers,reason); }
+        catch(RuntimeException e) {
+            inventory.getItems().clear(); inventory.getItems().addAll(oldItems);
+            suppliers.clear(); suppliers.addAll(oldSuppliers); throw e;
+        }
+    }
     public void addItemToInventory(Item item, String contactDetails) {
-        inventory.addItem(item);
-        addSupplierIfNotExists(item.getSupplier(), contactDetails, item.getItemName());
-        saveAllData();
+        change("ADD_PRODUCT", () -> {
+            if(inventory.findByBarcode(item.getBarcode())!=null)throw new IllegalArgumentException("Barcode already belongs to another product.");
+            inventory.addItem(item); upsertSupplier(item.getSupplier(),contactDetails,item.getItemName());
+        });
     }
-
     public void removeItemFromInventory(String itemName) {
-        inventory.removeItem(itemName);
-        saveAllData();
+        change("REMOVE_PRODUCT", () -> {
+            if(inventory.findItemByName(itemName)==null)throw new IllegalArgumentException("Product not found.");
+            inventory.removeItem(itemName);
+        });
     }
-
-    public void updateItemInInventory(String itemName, double purchasePrice, double sellingPrice, int stock) {
-        inventory.updateItem(itemName, purchasePrice, sellingPrice, stock);
-        saveAllData();
+    public void updateItemInInventory(String itemName,double purchasePrice,double sellingPrice,int stock) {
+        change("UPDATE_PRICE_OR_STOCK", () -> inventory.updateItem(itemName,purchasePrice,sellingPrice,stock));
+    }
+    public void updateProduct(String sku,double purchasePrice,double sellingPrice,int stock,String barcode) {
+        change("UPDATE_PRODUCT", () -> {
+            Item item=inventory.findBySku(sku);
+            if(item==null)throw new IllegalArgumentException("Product not found.");
+            Item duplicate=inventory.findByBarcode(barcode);
+            if(duplicate!=null && duplicate!=item)throw new IllegalArgumentException("Barcode already belongs to another product.");
+            item.setBarcode(barcode); inventory.updateItem(item.getItemName(),purchasePrice,sellingPrice,stock);
+        });
     }
 
     public Inventory getInventory() {
@@ -42,26 +66,15 @@ public class Manager extends User {
     }
 
     // Supplier Management Methods
-    public void addSupplierIfNotExists(String supplierName, String contactDetails, String productName) {
-        boolean supplierExists = suppliers.stream()
-                .anyMatch(supplier -> supplier.getSupplierName().equalsIgnoreCase(supplierName));
-
-        if (!supplierExists) {
-            Supplier newSupplier = new Supplier(supplierName, contactDetails);
-            newSupplier.addItem(new Item(productName, "", supplierName, 0, 0, 0));
-            suppliers.add(newSupplier);
-        } else {
-            for (Supplier supplier : suppliers) {
-                if (supplier.getSupplierName().equalsIgnoreCase(supplierName)) {
-                    if (supplier.getContactDetails().isEmpty()) {
-                        supplier.setContactDetails(contactDetails);
-                    }
-                    supplier.addItem(new Item(productName, "", supplierName, 0, 0, 0));
-                    break;
-                }
-            }
-        }
-        saveAllData();
+    public void addSupplierIfNotExists(String supplierName,String contactDetails,String productName) {
+        change("SUPPLIER_UPDATE", () -> upsertSupplier(supplierName,contactDetails,productName));
+    }
+    private void upsertSupplier(String supplierName,String contactDetails,String productName) {
+        if(supplierName==null||supplierName.isBlank())throw new IllegalArgumentException("Supplier is required.");
+        Supplier supplier=suppliers.stream().filter(s -> s.getSupplierName().equalsIgnoreCase(supplierName)).findFirst().orElse(null);
+        if(supplier==null) { supplier=new Supplier(supplierName,contactDetails==null ? "" : contactDetails); suppliers.add(supplier); }
+        if(contactDetails!=null&&!contactDetails.isBlank())supplier.setContactDetails(contactDetails);
+        supplier.addItem(new Item(productName,"",supplierName,0,0,0));
     }
 
     public List<Supplier> getSuppliers() {
@@ -85,8 +98,8 @@ public class Manager extends User {
     public double getTotalRevenueByDate(LocalDate date) {
         return bills.stream()
                 .filter(bill -> bill.getDate().toInstant().atZone(java.time.ZoneId.systemDefault()).toLocalDate().equals(date))
-                .mapToDouble(Bill::getTotalAmount)
-                .sum();
+                .map(Bill::getNetAmount)
+                .reduce(java.math.BigDecimal.ZERO,java.math.BigDecimal::add).doubleValue();
     }
 
     public int getTotalBillsForPeriod(LocalDate startDate, LocalDate endDate) {
@@ -114,19 +127,12 @@ public class Manager extends User {
                     LocalDate billDate = bill.getDate().toInstant().atZone(java.time.ZoneId.systemDefault()).toLocalDate();
                     return !billDate.isBefore(startDate) && !billDate.isAfter(endDate);
                 })
-                .mapToDouble(Bill::getTotalAmount)
-                .sum();
+                .map(Bill::getNetAmount)
+                .reduce(java.math.BigDecimal.ZERO,java.math.BigDecimal::add).doubleValue();
     }
 
     public List<Bill> getAllBills() {
         return bills;
-    }
-
-    // Save all data using DAOs
-    private void saveAllData() {
-        InventoryDAO.saveInventory(inventory);
-        SupplierDAO.saveSuppliers(suppliers);
-        BillDAO.saveBills(bills);
     }
 
     // Debugging Method

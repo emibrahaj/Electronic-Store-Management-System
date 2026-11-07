@@ -31,11 +31,14 @@ public class AdminController {
 
     public void addEmployee(String username, String password, String name, String email,
                             String phoneNumber, Role role, String accessLevel) {
+        Util.Session.require(Role.ADMIN);
         validateEmployee(username, password, email, phoneNumber, role);
 
         if (findEmployee(username) != null) {
             throw new IllegalArgumentException("An employee with this username already exists.");
         }
+
+        validateTextFields(name, accessLevel);
 
         // Hash password before storing
         String hashedPassword;
@@ -45,14 +48,17 @@ public class AdminController {
             throw new RuntimeException("Failed to hash password: " + e.getMessage(), e);
         }
 
-        employees.add(new Employee(username, hashedPassword, name, email, phoneNumber, role, accessLevel));
-        saveEmployees();
+        User added=new Employee(username, hashedPassword, name, email, phoneNumber, role, accessLevel);
+        employees.add(added);
+        try { saveEmployees(); } catch(RuntimeException e) { employees.remove(added); throw e; }
     }
 
     public void updateEmployee(String originalUsername, String username, String password, String name,
                                String email, String phoneNumber, Role role, String accessLevel) {
-        validateEmployee(username, password, email, phoneNumber, role);
+        Util.Session.require(Role.ADMIN);
+        validateEmployee(username, password.isEmpty() ? "unchanged" : password, email, phoneNumber, role);
 
+        validateTextFields(name, accessLevel);
         User existing = findEmployee(originalUsername);
         if (existing == null) {
             throw new IllegalArgumentException("Please select an employee to update.");
@@ -63,9 +69,15 @@ public class AdminController {
             throw new IllegalArgumentException("Another employee already uses this username.");
         }
 
+        if (existing.getRole() == Role.ADMIN && role != Role.ADMIN && getEmployeeCountByRole(Role.ADMIN) <= 1)
+            throw new IllegalArgumentException("Keep at least one administrator.");
+        if (existing.getUsername().equalsIgnoreCase(Util.Session.username()) &&
+                (!username.equalsIgnoreCase(existing.getUsername()) || role != Role.ADMIN))
+            throw new IllegalArgumentException("You cannot rename or demote your active administrator account.");
+        User original=new Employee(existing.getUsername(),existing.getPassword(),existing.getName(),existing.getEmail(),existing.getPhoneNumber(),existing.getRole(),existing.getAccessLevel());
         existing.setUsername(username);
         try {
-            existing.setPassword(PasswordManager.hashPassword(password));
+            if (!password.isEmpty()) existing.setPassword(PasswordManager.hashPassword(password));
         } catch (Exception e) {
             throw new RuntimeException("Failed to hash password: " + e.getMessage(), e);
         }
@@ -74,16 +86,22 @@ public class AdminController {
         existing.setPhoneNumber(phoneNumber);
         existing.setRole(role);
         existing.setAccessLevel(accessLevel);
-        saveEmployees();
+        try { saveEmployees(); } catch(RuntimeException e) { employees.set(employees.indexOf(existing),original); throw e; }
     }
 
     public void deleteEmployee(User employee) {
+        Util.Session.require(Role.ADMIN);
         if (employee == null) {
             throw new IllegalArgumentException("Please select an employee to delete.");
         }
 
+        if (employee.getUsername().equalsIgnoreCase(Util.Session.username()))
+            throw new IllegalArgumentException("You cannot delete your active account.");
+        if (employee.getRole() == Role.ADMIN && getEmployeeCountByRole(Role.ADMIN) <= 1)
+            throw new IllegalArgumentException("Keep at least one administrator.");
+        List<User> original=new ArrayList<>(employees);
         employees.removeIf(user -> user.getUsername().equalsIgnoreCase(employee.getUsername()));
-        saveEmployees();
+        try { saveEmployees(); } catch(RuntimeException e) { employees.clear(); employees.addAll(original); throw e; }
     }
 
     public User findEmployee(String username) {
@@ -106,59 +124,59 @@ public class AdminController {
     private void loadEmployees() {
         employees.clear();
 
-        if (!Files.exists(PASSWORD_FILE)) {
-            addDefaultEmployees();
-            saveEmployees();
-            return;
-        }
+        if (!Files.exists(PASSWORD_FILE)) return;
 
         try (BufferedReader reader = Files.newBufferedReader(PASSWORD_FILE)) {
             String line;
             while ((line = reader.readLine()) != null) {
-                String[] fields = line.split(",");
+                String[] fields = line.split(",", -1);
+                if (line.isBlank()) continue;
+                if (fields.length < 5) throw new IllegalStateException("Malformed credential record; restore the credentials backup.");
                 if (fields.length >= 5) {
                     Role role = parseRole(fields[4]);
-                    employees.add(new Employee(fields[0], fields[1], fields[0], fields[2],
-                            fields[3], role, defaultAccessLevel(role)));
+                    employees.add(new Employee(fields[0], fields[1], fields.length > 5 ? fields[5] : fields[0], fields[2],
+                            fields[3], role, fields.length > 6 ? fields[6] : defaultAccessLevel(role)));
                 }
             }
         } catch (IOException e) {
             throw new IllegalStateException("Could not load employees: " + e.getMessage(), e);
         }
 
-        if (employees.isEmpty()) {
-            addDefaultEmployees();
-            saveEmployees();
-        }
+
     }
 
     private void saveEmployees() {
         try {
             Files.createDirectories(PASSWORD_FILE.getParent());
-            try (BufferedWriter writer = Files.newBufferedWriter(PASSWORD_FILE)) {
+            Path temporary = Files.createTempFile(PASSWORD_FILE.getParent(), "employees-", ".tmp");
+            try {
+            try (BufferedWriter writer = Files.newBufferedWriter(temporary)) {
                 for (User employee : employees) {
                     writer.write(String.join(",",
                             employee.getUsername(),
                             employee.getPassword(),
                             employee.getEmail(),
                             employee.getPhoneNumber(),
-                            roleToFileValue(employee.getRole())));
+                            roleToFileValue(employee.getRole()), employee.getName(), employee.getAccessLevel()));
                     writer.newLine();
                 }
             }
+            DAO.AtomicFiles.replace(temporary, PASSWORD_FILE);
+            } finally { Files.deleteIfExists(temporary); }
         } catch (IOException e) {
             throw new IllegalStateException("Could not save employees: " + e.getMessage(), e);
         }
     }
 
-    private void addDefaultEmployees() {
+    public static synchronized void createFirstAdmin(String username, String password, String name, String email, String phone) {
+        AdminController controller = new AdminController();
+        if (!controller.employees.isEmpty()) throw new IllegalStateException("An administrator is already configured.");
+        controller.validateEmployee(username, password, email, phone, Role.ADMIN);
+        controller.validateTextFields(name, "Full Access");
         try {
-            employees.add(new Employee("adminUser", PasswordManager.hashPassword("adminPass"), "Admin", "klajdi@gmail.com", "0684801184", Role.ADMIN, "Full Access"));
-            employees.add(new Employee("managerUser", PasswordManager.hashPassword("managerPass"), "Manager", "manager@example.com", "4466778899", Role.MANAGER, "Inventory and reports"));
-            employees.add(new Employee("cashierUser", PasswordManager.hashPassword("cashierPass"), "Cashier", "cashier@example.com", "123456789", Role.CASHIER, "Sales"));
-        } catch (Exception e) {
-            throw new IllegalStateException("Could not create default employees: " + e.getMessage(), e);
-        }
+            controller.employees.add(new Employee(username, PasswordManager.hashPassword(password), name, email, phone, Role.ADMIN, "Full Access"));
+            controller.saveEmployees();
+        } catch (Exception e) { throw new IllegalStateException("Could not create administrator.", e); }
     }
 
     private void validateEmployee(String username, String password, String email, String phoneNumber, Role role) {
@@ -176,6 +194,13 @@ public class AdminController {
         }
         if (role == null) {
             throw new IllegalArgumentException("Role is required.");
+        }
+    }
+
+    private void validateTextFields(String... values) {
+        for (String value : values) {
+            if (value == null || value.contains(",") || value.contains("\n") || value.contains("\r"))
+                throw new IllegalArgumentException("Name and access level cannot contain commas or line breaks.");
         }
     }
 

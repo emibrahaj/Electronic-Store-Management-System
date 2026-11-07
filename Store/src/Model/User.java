@@ -31,7 +31,13 @@ public abstract class User implements Serializable {
 
     // Login method
     public boolean login(String username, String password) {
-        if (this.username.equals(username) && this.password.equals(password)) {
+        loggedIn = false;
+        boolean matches;
+        try {
+            matches = this.password.contains(":") ? DAO.PasswordManager.verifyPassword(password, this.password)
+                    : this.password.equals(password);
+        } catch (Exception e) { matches = false; }
+        if (this.username.equals(username) && matches) {
             loggedIn = true;
             System.out.println(username + " " + name + " logged in successfully as " + role + "\n");
         } else {
@@ -111,5 +117,5 @@ public abstract class User implements Serializable {
     public void setAccessLevel(String accessLevel) {
         this.accessLevel = accessLevel;
     }
-	
+
 }

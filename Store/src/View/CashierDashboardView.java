@@ -23,6 +23,8 @@ public class CashierDashboardView {
     private TextField quantityField;
     private Button addItemButton, finalizeBillButton, refreshBillsButton, returnItemButton;
     private Label totalLabel;
+    private Label salesLabel;
+    private TableView<Item> cartTable;
     private TableView<Item> inventoryTable;
     private TableView<Bill> billTable;
     private ObservableList<Item> inventoryItems;
@@ -37,13 +39,11 @@ public class CashierDashboardView {
         // Search field
         searchField = new TextField();
         searchField.setPromptText("Search item...");
-        searchField.setStyle("-fx-font-size: 14px; -fx-padding: 10px;");
         searchField.textProperty().addListener((observable, oldValue, newValue) -> filterInventory(newValue));
 
         // Quantity field
         quantityField = new TextField();
         quantityField.setPromptText("Quantity");
-        quantityField.setStyle("-fx-font-size: 14px; -fx-padding: 10px;");
 
         // Buttons
         addItemButton = createStyledButton("Add Item");
@@ -58,8 +58,8 @@ public class CashierDashboardView {
         refreshBillsButton = createStyledButton("Refresh Today's Bills");
         refreshBillsButton.setOnAction(e -> loadTodaysBills());
 
-        totalLabel = new Label("Total: $0.00");
-        totalLabel.setStyle("-fx-font-size: 16px; -fx-text-fill: white; -fx-font-weight: bold;");
+        totalLabel = new Label("Cart total: $0.00");
+        salesLabel = new Label();
 
         // Setup inventory table and load data
         setupInventoryTable();
@@ -69,22 +69,60 @@ public class CashierDashboardView {
         setupBillTable();
         loadTodaysBills();
 
-        VBox layout = new VBox(15,
-            createStyledLabel("Cashier Dashboard"),
-            searchField,
-            inventoryTable,
-            quantityField,
-            addItemButton,
-            finalizeBillButton,
-            returnItemButton,
-            totalLabel,
-            refreshBillsButton,
-            billTable
-        );
-        layout.setPadding(new Insets(20));
-        layout.setStyle("-fx-background-color: #1E88E5; -fx-border-radius: 10;");
-
-        Scene scene = new Scene(layout, 800, 600);
+        Button logoutButton = createStyledButton("Logout");
+        logoutButton.setOnAction(e -> { if (navigator != null) navigator.logout(); });
+        AppTheme.primary(addItemButton); AppTheme.primary(finalizeBillButton);
+        AppTheme.table(inventoryTable, "No products available yet.");
+        AppTheme.table(billTable, "Completed sales will appear here.");
+        totalLabel.getStyleClass().add("section-title"); totalLabel.setWrapText(true);
+        quantityField.setPrefWidth(110);
+        cartTable = new TableView<>();
+        TableColumn<Item,String> cartName = new TableColumn<>("Product");
+        cartName.setCellValueFactory(cell -> new SimpleStringProperty(cell.getValue().getItemName()));
+        TableColumn<Item,String> cartQuantity = new TableColumn<>("Qty");
+        cartQuantity.setCellValueFactory(cell -> new SimpleStringProperty(String.valueOf(cell.getValue().getQuantity())));
+        TableColumn<Item,String> cartPrice = new TableColumn<>("Unit price");
+        cartPrice.setCellValueFactory(cell -> new SimpleStringProperty(Util.Money.format(cell.getValue().getSellingAmount())));
+        TableColumn<Item,String> cartSubtotal = new TableColumn<>("Subtotal");
+        cartSubtotal.setCellValueFactory(cell -> new SimpleStringProperty(Util.Money.format(cell.getValue().getSellingAmount().multiply(java.math.BigDecimal.valueOf(cell.getValue().getQuantity())))));
+        cartTable.getColumns().addAll(cartName,cartQuantity,cartPrice,cartSubtotal);
+        refreshCart();
+        AppTheme.table(cartTable,"Your cart is empty. Add a product or scan a barcode.");
+        Button change = createStyledButton("Change quantity"); change.setOnAction(e -> changeCartQuantity());
+        Button remove = AppTheme.danger(createStyledButton("Remove")); remove.setOnAction(e -> {
+            Item selected=cartTable.getSelectionModel().getSelectedItem();
+            if(selected!=null) { controller.updateCartQuantity(selected.getSku(),0); refreshCart(); }
+        });
+        Button cancel = createStyledButton("Cancel sale"); cancel.setOnAction(e -> {
+            Alert confirm = new Alert(Alert.AlertType.CONFIRMATION,"Discard this cart?",ButtonType.OK,ButtonType.CANCEL);
+            AppTheme.dialog(confirm);
+            if(confirm.showAndWait().orElse(ButtonType.CANCEL)==ButtonType.OK) { controller.cancelBill(); refreshCart(); }
+        });
+        TextField barcode = new TextField(); barcode.setPromptText("Scan barcode or enter SKU, then press Enter");
+        barcode.setOnAction(e -> {
+            try { controller.scanBarcode(barcode.getText().trim(),1); barcode.clear(); refreshCart(); }
+            catch(RuntimeException error) { showAlert("Scan product",error.getMessage()); }
+        });
+        VBox products = AppTheme.card(AppTheme.title("Products"), searchField, barcode, inventoryTable,
+                new HBox(10, AppTheme.field("Quantity", quantityField), addItemButton));
+        VBox cart = AppTheme.card(AppTheme.title("Current sale"),cartTable,totalLabel,
+                new HBox(10,change,remove),new HBox(10,finalizeBillButton,cancel));
+        VBox history = AppTheme.card(AppTheme.title("Sales today"),salesLabel, billTable,
+                new HBox(10,returnItemButton,refreshBillsButton));
+        Tab current = new Tab("Checkout",cart); current.setClosable(false);
+        Tab completed = new Tab("Completed sales",history); completed.setClosable(false);
+        TabPane salesTabs = new TabPane(current,completed);
+        VBox sales = new VBox(salesTabs); VBox.setVgrow(salesTabs,Priority.ALWAYS);
+        VBox.setVgrow(cartTable,Priority.ALWAYS);
+        VBox.setVgrow(inventoryTable, Priority.ALWAYS); VBox.setVgrow(billTable, Priority.ALWAYS);
+        products.setMinWidth(0); sales.setMinWidth(0);
+        SplitPane panels = new SplitPane(products, sales); panels.setDividerPositions(0.48);
+        VBox layout = new VBox(24, AppTheme.header("Point of sale", "Select products, build a bill, and complete the sale.", logoutButton), panels);
+        VBox.setVgrow(panels, Priority.ALWAYS);
+        layout.setPadding(new Insets(28));
+        Scene scene = new Scene(layout, 1200, 780);
+        AppTheme.apply(scene, stage);
+        stage.setMinWidth(1000);
         stage.setScene(scene);
         stage.setTitle("Cashier Dashboard");
         stage.show();
@@ -107,11 +145,14 @@ public class CashierDashboardView {
         TableColumn<Item, String> priceCol = new TableColumn<>("Selling Price");
         priceCol.setCellValueFactory(cellData -> new SimpleStringProperty(String.valueOf(cellData.getValue().getSellingPrice())));
 
-        inventoryTable.getColumns().addAll(itemNameCol, stockCol, priceCol);
+        TableColumn<Item,String> skuCol = new TableColumn<>("SKU");
+        skuCol.setCellValueFactory(cell -> new SimpleStringProperty(cell.getValue().getSku()));
+        inventoryTable.getColumns().addAll(itemNameCol, stockCol, priceCol,skuCol);
     }
 
     private void loadInventoryData() {
         inventoryItems.setAll(controller.getInventoryItems());
+        if (inventoryTable != null) { filterInventory(searchField.getText()); inventoryTable.refresh(); }
     }
 
     private void setupBillTable() {
@@ -142,14 +183,14 @@ public class CashierDashboardView {
         billTable.setItems(todaysBills);
 
         double totalSales = controller.getTotalOfTodaysBills();
-        totalLabel.setText("Today's Total Sales: $" + totalSales);
+        salesLabel.setText("Today's net sales: " + Util.Money.format(Util.Money.of(totalSales)));
     }
 
     // Search function for filtering inventory table
     private void filterInventory(String query) {
         ObservableList<Item> filteredList = FXCollections.observableArrayList();
         for (Item item : controller.getInventoryItems()) {
-            if (item.getItemName().toLowerCase().contains(query.toLowerCase())) {
+            if (item.getItemName().toLowerCase().contains(query.toLowerCase()) || item.getSku().contains(query) || item.getBarcode().contains(query)) {
                 filteredList.add(item);
             }
         }
@@ -171,19 +212,40 @@ public class CashierDashboardView {
             }
 
             controller.addItemToBill(selectedItem.getItemName(), quantity);
-            totalLabel.setText("Total: $" + controller.getTotalAmount());
+            refreshCart();
 
             loadInventoryData(); // Reload inventory to reflect updated stock
-        } catch (NumberFormatException e) {
-            showAlert("Error", "Please enter a valid quantity.");
+        } catch (IllegalArgumentException e) {
+            showAlert("Error", e.getMessage());
         }
     }
 
     private void finalizeBill() {
-        controller.finalizeBill();
-        totalLabel.setText("Total: $0.00");
+        try {
+            controller.finalizeBill();
+        } catch (RuntimeException e) {
+            showAlert("Error", e.getMessage());
+            return;
+        }
+        refreshCart();
+        showAlert("Sale completed", "Payment recorded and stock updated.");
         loadInventoryData();  // Reload inventory to reflect stock update
         loadTodaysBills();  // Reload bills to show new finalized bill
+    }
+
+    private void refreshCart() {
+        cartTable.setItems(FXCollections.observableArrayList(controller.getCartItems()));
+        totalLabel.setText("Cart total: " + Util.Money.format(Util.Money.of(controller.getTotalAmount())));
+    }
+    private void changeCartQuantity() {
+        Item selected=cartTable.getSelectionModel().getSelectedItem();
+        if(selected==null) { showAlert("Cart", "Select a cart item first."); return; }
+        TextInputDialog dialog = new TextInputDialog(String.valueOf(selected.getQuantity()));
+        dialog.setTitle("Change quantity"); dialog.setHeaderText(selected.getItemName()); AppTheme.dialog(dialog);
+        dialog.showAndWait().ifPresent(value -> {
+            try { controller.updateCartQuantity(selected.getSku(),Integer.parseInt(value)); refreshCart(); }
+            catch(RuntimeException e) { showAlert("Quantity",e.getMessage()); }
+        });
     }
 
     private void showReturnDialog() {
@@ -213,6 +275,7 @@ public class CashierDashboardView {
         dialog.getDialogPane().setContent(grid);
         dialog.getDialogPane().getButtonTypes().addAll(ButtonType.OK, ButtonType.CANCEL);
 
+        AppTheme.dialog(dialog);
         Optional<ButtonType> result = dialog.showAndWait();
         if (result.isPresent() && result.get() == ButtonType.OK) {
             try {
@@ -229,12 +292,12 @@ public class CashierDashboardView {
                     showAlert("Success", "Return processed successfully.");
                     loadInventoryData();
                     loadTodaysBills();
-                    totalLabel.setText("Today's Total Sales: $" + controller.getTotalOfTodaysBills());
+                    salesLabel.setText("Today's net sales: " + Util.Money.format(Util.Money.of(controller.getTotalOfTodaysBills())));
                 } else {
                     showAlert("Error", "Unable to process return. Check the bill number, item name, and quantity.");
                 }
-            } catch (NumberFormatException e) {
-                showAlert("Error", "Quantity must be a valid number.");
+            } catch (RuntimeException e) {
+                showAlert("Error", e.getMessage());
             }
         }
     }
@@ -244,18 +307,17 @@ public class CashierDashboardView {
         alert.setTitle(title);
         alert.setHeaderText(null);
         alert.setContentText(message);
+        AppTheme.dialog(alert);
         alert.showAndWait();
     }
 
     private Button createStyledButton(String text) {
         Button button = new Button(text);
-        button.setStyle("-fx-background-color: #1976D2; -fx-text-fill: white; -fx-font-size: 14px; -fx-padding: 10px;");
         return button;
     }
 
     private Label createStyledLabel(String text) {
         Label label = new Label(text);
-        label.setStyle("-fx-font-size: 20px; -fx-font-weight: bold; -fx-text-fill: white;");
         return label;
     }
 }

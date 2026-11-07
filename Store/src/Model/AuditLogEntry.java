@@ -25,6 +25,11 @@ public class AuditLogEntry implements Serializable {
         this.details = details;
     }
 
+    public AuditLogEntry(LocalDateTime timestamp, String userId, String action, String entityType, String entityId, String details) {
+        this(userId, action, entityType, entityId, details);
+        this.timestamp = timestamp;
+    }
+
     public LocalDateTime getTimestamp() {
         return timestamp;
     }

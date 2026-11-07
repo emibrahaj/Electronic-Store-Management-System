@@ -5,7 +5,7 @@ package Util;
  * buffer overflows, and format violations.
  */
 public class InputValidator {
-    
+
     // Validation patterns
     private static final String USERNAME_PATTERN = "^[a-zA-Z0-9_]{3,50}$";
     private static final String PASSWORD_PATTERN = "^.{6,100}$";  // At least 6 chars
@@ -14,10 +14,10 @@ public class InputValidator {
     private static final String ITEM_NAME_PATTERN = "^[a-zA-Z0-9\\s\\-./&()]{1,100}$";
     private static final String CATEGORY_PATTERN = "^[a-zA-Z0-9\\s\\-]{1,50}$";
     private static final String BILL_NUMBER_PATTERN = "^[A-Z0-9\\-]{5,20}$";
-    
+
     /**
      * Validates username format (alphanumeric and underscore, 3-50 chars).
-     * 
+     *
      * @param username the username to validate
      * @return true if valid, false otherwise
      */
@@ -27,10 +27,10 @@ public class InputValidator {
         }
         return username.matches(USERNAME_PATTERN);
     }
-    
+
     /**
      * Validates password strength (minimum 6 characters).
-     * 
+     *
      * @param password the password to validate
      * @return true if valid, false otherwise
      */
@@ -38,12 +38,12 @@ public class InputValidator {
         if (password == null || password.isEmpty()) {
             return false;
         }
-        return password.matches(PASSWORD_PATTERN);
+        return password.matches(PASSWORD_PATTERN) && !password.contains(",");
     }
-    
+
     /**
      * Validates email format using standard email regex pattern.
-     * 
+     *
      * @param email the email to validate
      * @return true if valid, false otherwise
      */
@@ -53,10 +53,10 @@ public class InputValidator {
         }
         return email.matches(EMAIL_PATTERN) && email.length() <= 100;
     }
-    
+
     /**
      * Validates phone number (10-15 digits).
-     * 
+     *
      * @param phoneNumber the phone number to validate
      * @return true if valid, false otherwise
      */
@@ -66,10 +66,10 @@ public class InputValidator {
         }
         return phoneNumber.matches(PHONE_PATTERN);
     }
-    
+
     /**
      * Validates item name (alphanumeric, spaces, and basic punctuation, max 100 chars).
-     * 
+     *
      * @param itemName the item name to validate
      * @return true if valid, false otherwise
      */
@@ -79,10 +79,10 @@ public class InputValidator {
         }
         return itemName.matches(ITEM_NAME_PATTERN);
     }
-    
+
     /**
      * Validates category name.
-     * 
+     *
      * @param category the category to validate
      * @return true if valid, false otherwise
      */
@@ -92,10 +92,10 @@ public class InputValidator {
         }
         return category.matches(CATEGORY_PATTERN);
     }
-    
+
     /**
      * Validates bill number format.
-     * 
+     *
      * @param billNumber the bill number to validate
      * @return true if valid, false otherwise
      */
@@ -105,31 +105,31 @@ public class InputValidator {
         }
         return billNumber.matches(BILL_NUMBER_PATTERN);
     }
-    
+
     /**
      * Validates a numeric price (positive double, up to 2 decimal places).
-     * 
+     *
      * @param price the price to validate
      * @return true if valid, false otherwise
      */
     public static boolean isValidPrice(double price) {
         return price > 0 && price <= 999999.99;
     }
-    
+
     /**
      * Validates stock quantity (non-negative integer).
-     * 
+     *
      * @param quantity the quantity to validate
      * @return true if valid, false otherwise
      */
     public static boolean isValidQuantity(int quantity) {
         return quantity >= 0 && quantity <= 999999;
     }
-    
+
     /**
      * Sanitizes file names to prevent directory traversal and injection.
      * Removes/escapes dangerous characters.
-     * 
+     *
      * @param filename the filename to sanitize
      * @return a sanitized filename
      */
@@ -142,10 +142,10 @@ public class InputValidator {
                       .replaceAll("\\.\\.[\\\\/]", "")  // Remove ../ and ..\
                       .replaceAll("^\\.", "");            // Remove leading dots
     }
-    
+
     /**
      * Validates that a string is not blank and within length bounds.
-     * 
+     *
      * @param input the string to validate
      * @param minLength minimum allowed length
      * @param maxLength maximum allowed length
@@ -158,20 +158,20 @@ public class InputValidator {
         int length = input.length();
         return length >= minLength && length <= maxLength;
     }
-    
+
     /**
      * Validates that a string is not blank.
-     * 
+     *
      * @param input the string to check
      * @return true if not blank, false otherwise
      */
     public static boolean isNotBlank(String input) {
         return input != null && !input.isBlank();
     }
-    
+
     /**
      * Provides error messages for validation failures.
-     * 
+     *
      * @param fieldName the field that failed validation
      * @param rule the validation rule that failed
      * @return a user-friendly error message

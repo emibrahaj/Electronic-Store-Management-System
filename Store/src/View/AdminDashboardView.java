@@ -34,19 +34,21 @@ public class AdminDashboardView {
         userView.setUsers(controller.getEmployees());
 
         final BorderPane mainLayout = new BorderPane();
-        
+
     //set style for admin dashboard display
         HBox header = new HBox();
-        header.setStyle("-fx-background-color: #1E90FF; -fx-padding: 15;");
         Label welcomeLabel = new Label("Welcome, Admin");
         welcomeLabel.setFont(Font.font("Arial", FontWeight.BOLD, 20));
-        welcomeLabel.setTextFill(Color.WHITE);
-        header.getChildren().add(welcomeLabel);
+
+        header.getChildren().add(AppTheme.header("Store administration", "Manage your team and store access."));
+        header.setPadding(new Insets(24));
 
         VBox sidebar = new VBox(20);
-        sidebar.setStyle("-fx-background-color: #4682B4;");
-        sidebar.setPadding(new javafx.geometry.Insets(20));
-        //create buttons on the left side 
+        sidebar.getStyleClass().add("sidebar");
+        sidebar.setPadding(new Insets(24, 16, 24, 16));
+        sidebar.setPrefWidth(210);
+        sidebar.getChildren().add(new Label("STOREPOS  /  ADMIN"));
+        //create buttons on the left side
         Button manageEmployeesButton = createSidebarButton("Manage Employees");
         Button viewReportsButton = createSidebarButton("View Reports");
         Button accessLevelButton = createSidebarButton("View Access");
@@ -67,14 +69,13 @@ public class AdminDashboardView {
         sidebar.getChildren().addAll(manageEmployeesButton, viewReportsButton, accessLevelButton, logoutButton);
 
         contentArea = new VBox(20);
-        contentArea.setStyle("-fx-background-color: #F0F8FF;");
         contentArea.setPadding(new Insets(20));
 
         showEmployeeManagement();
 
         HBox quickActions = new HBox(20);
-        quickActions.setStyle("-fx-background-color: #87CEFA;");
-        quickActions.setPadding(new Insets(10));
+        quickActions.getStyleClass().add("toolbar");
+        quickActions.setPadding(new Insets(16, 24, 16, 24));
         //create action buttons on the bottom
         Button addEmployeeButton = createActionButton("Add Employee");
         Button deleteEmployeeButton = createActionButton("Delete Employee");
@@ -86,6 +87,8 @@ public class AdminDashboardView {
         updateDetailsButton.setOnAction(e -> updateSelectedEmployee());
         clearButton.setOnAction(e -> clearForm());
 
+        AppTheme.primary(addEmployeeButton);
+        AppTheme.danger(deleteEmployeeButton);
         quickActions.getChildren().addAll(addEmployeeButton, deleteEmployeeButton, updateDetailsButton, clearButton);
 
         mainLayout.setTop(header);
@@ -93,7 +96,9 @@ public class AdminDashboardView {
         mainLayout.setCenter(contentArea);
         mainLayout.setBottom(quickActions);
 
-        Scene scene = new Scene(mainLayout, 1000, 600);
+        Scene scene = new Scene(mainLayout, 1200, 800);
+        AppTheme.apply(scene, primaryStage);
+        primaryStage.setMinWidth(1040);
         primaryStage.setScene(scene);
         primaryStage.setTitle("Admin Dashboard");
         primaryStage.show();
@@ -101,11 +106,7 @@ public class AdminDashboardView {
 
     private Button createSidebarButton(String text) {
         Button button = new Button(text);
-        button.setStyle("-fx-background-color: #4682B4; -fx-text-fill: white; -fx-font-size: 14px; -fx-padding: 10px;");
-        button.setPrefWidth(250);
-        
-        button.setOnMouseEntered(e -> button.setStyle("-fx-background-color: #5F9EA0; -fx-text-fill: white;"));
-        button.setOnMouseExited(e -> button.setStyle("-fx-background-color: #4682B4; -fx-text-fill: white;"));
+        button.setPrefWidth(178);
 
         return button;
     }
@@ -114,13 +115,15 @@ public class AdminDashboardView {
         contentArea.getChildren().clear();
 
         Label contentTitle = new Label("Employee Management");
-        contentTitle.setFont(Font.font("Arial", FontWeight.BOLD, 24));
+        contentTitle.getStyleClass().add("section-title");
 
         GridPane form = createEmployeeForm();
         userView.setUsers(controller.getEmployees());
         userView.getTableView().setOnMouseClicked(e -> populateForm(userView.getSelectedUser()));
 
-        contentArea.getChildren().addAll(contentTitle, form, userView.getTableView());
+        AppTheme.table(userView.getTableView(), "No employees to display.");
+        VBox.setVgrow(userView.getTableView(), Priority.ALWAYS);
+        contentArea.getChildren().addAll(contentTitle, AppTheme.card(form), userView.getTableView());
     }
 
     private GridPane createEmployeeForm() {
@@ -137,7 +140,12 @@ public class AdminDashboardView {
         accessField = createTextField("Access Level");
 
         GridPane form = new GridPane();
-        form.setHgap(10);
+        form.setHgap(16);
+        for (int i = 0; i < 4; i++) {
+            ColumnConstraints column = new ColumnConstraints();
+            if (i % 2 == 1) { column.setHgrow(Priority.ALWAYS); column.setPercentWidth(34); }
+            form.getColumnConstraints().add(column);
+        }
         form.setVgap(10);
         form.addRow(0, new Label("Username:"), usernameField, new Label("Password:"), passwordField);
         form.addRow(1, new Label("Name:"), nameField, new Label("Email:"), emailField);
@@ -193,6 +201,7 @@ public class AdminDashboardView {
         confirm.setTitle("Delete Employee");
         confirm.setHeaderText(null);
         confirm.setContentText("Delete " + selectedUser.getUsername() + "?");
+        AppTheme.dialog(confirm);
         Optional<ButtonType> result = confirm.showAndWait();
 
         if (result.isPresent() && result.get() == ButtonType.OK) {
@@ -209,7 +218,8 @@ public class AdminDashboardView {
         }
 
         usernameField.setText(user.getUsername());
-        passwordField.setText(user.getPassword());
+        passwordField.clear();
+        passwordField.setPromptText("Leave blank to keep password");
         nameField.setText(user.getName());
         emailField.setText(user.getEmail());
         phoneField.setText(user.getPhoneNumber());
@@ -242,7 +252,21 @@ public class AdminDashboardView {
         Label managers = new Label("Managers: " + controller.getEmployeeCountByRole(Role.MANAGER));
         Label cashiers = new Label("Cashiers: " + controller.getEmployeeCountByRole(Role.CASHIER));
 
-        contentArea.getChildren().addAll(title, total, admins, managers, cashiers);
+        title.getStyleClass().add("page-title");
+        Label[] values = {total, admins, managers, cashiers};
+        javafx.scene.layout.TilePane cards = new javafx.scene.layout.TilePane(16, 16);
+        cards.setPrefColumns(2);
+        for (Label value : values) {
+            value.getStyleClass().add("section-title");
+            VBox card = AppTheme.card(value); card.setPrefWidth(300); cards.getChildren().add(card);
+        }
+        Button salesReports=AppTheme.primary(new Button("Open sales & inventory reports"));
+        salesReports.setOnAction(e -> {
+            javafx.stage.Stage stage=(javafx.stage.Stage)contentArea.getScene().getWindow();
+            Model.Manager manager=new Model.Manager("reporting","","Reporting","","");
+            new StatisticsView(stage,new Controller.ManagerController(manager),() -> show(stage)).show();
+        });
+        contentArea.getChildren().addAll(title, AppTheme.muted("Your team at a glance."), cards,salesReports);
     }
 
     public void setNavigator(AppNavigator navigator) {
@@ -258,17 +282,15 @@ public class AdminDashboardView {
         Label manager = new Label("Manager: manage inventory, suppliers, stock, and statistics.");
         Label cashier = new Label("Cashier: create bills, finalize sales, and view daily sales.");
 
-        contentArea.getChildren().addAll(title, admin, manager, cashier);
+        title.getStyleClass().add("page-title");
+        admin.setWrapText(true); manager.setWrapText(true); cashier.setWrapText(true);
+        contentArea.getChildren().addAll(title, AppTheme.muted("Responsibilities for each store role."),
+                AppTheme.card(admin), AppTheme.card(manager), AppTheme.card(cashier));
     }
 
     private Button createActionButton(String text) {
         Button button = new Button(text);
-        button.setStyle("-fx-background-color: #87CEFA; -fx-text-fill: white; -fx-font-size: 14px; -fx-padding: 10px;");
-        button.setPrefWidth(200);
-      
-
-        button.setOnMouseEntered(e -> button.setStyle("-fx-background-color: #ADD8E6; -fx-text-fill: white;"));
-        button.setOnMouseExited(e -> button.setStyle("-fx-background-color: #87CEFA; -fx-text-fill: white;"));
+        button.setMinWidth(120);
 
         return button;
     }
@@ -278,6 +300,7 @@ public class AdminDashboardView {
         alert.setTitle(title);
         alert.setHeaderText(null);
         alert.setContentText(message);
+        AppTheme.dialog(alert);
         alert.showAndWait();
     }
 

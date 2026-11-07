@@ -24,8 +24,16 @@ public class Bill implements Serializable {
     }
 
     public void addItem(Item item) {
-        this.items.add(item);
-        this.totalAmount += item.getSellingPrice() * item.getQuantity();
+        if (item == null || item.getQuantity() <= 0) throw new IllegalArgumentException("Invalid bill quantity.");
+        Item existing = items.stream().filter(line -> line.getSku().equals(item.getSku()))
+                .findFirst().orElse(null);
+        if (existing != null) {
+            existing.setQuantity(existing.getQuantity() + item.getQuantity());
+        } else {
+            Item snapshot = item.copy();
+            this.items.add(snapshot);
+        }
+        this.totalAmount = getNetAmount().doubleValue();
     }
 
     public String getBillNumber() {
@@ -41,7 +49,25 @@ public class Bill implements Serializable {
     }
 
     public double getTotalAmount() {
-        return totalAmount;
+        return getNetAmount().doubleValue();
+    }
+
+    public java.math.BigDecimal getNetAmount() {
+        return items.stream().map(item -> item.getSellingAmount().multiply(java.math.BigDecimal.valueOf(item.getQuantity())))
+                .reduce(java.math.BigDecimal.ZERO, java.math.BigDecimal::add).setScale(2);
+    }
+    public java.math.BigDecimal getProfit() {
+        return items.stream().map(item -> item.getSellingAmount().subtract(item.getPurchaseAmount())
+                .multiply(java.math.BigDecimal.valueOf(item.getQuantity())))
+                .reduce(java.math.BigDecimal.ZERO, java.math.BigDecimal::add).setScale(2);
+    }
+    public void restoreRefund(double amount) { refundedAmount = amount; fullyRefunded = items.isEmpty() && amount > 0; }
+    public void setQuantity(String sku, int quantity) {
+        if (quantity < 0) throw new IllegalArgumentException("Quantity cannot be negative.");
+        Item line = items.stream().filter(item -> item.getSku().equals(sku)).findFirst()
+                .orElseThrow(() -> new IllegalArgumentException("Select a cart item."));
+        if (quantity == 0) items.remove(line); else line.setQuantity(quantity);
+        totalAmount = getNetAmount().doubleValue();
     }
 
     public int getTotalItemsSold() {
@@ -56,6 +82,22 @@ public class Bill implements Serializable {
         return fullyRefunded;
     }
 
+    Bill snapshot() {
+        Bill copy = new Bill(billNumber, date);
+        for (Item item : items) copy.addItem(item);
+        copy.totalAmount = totalAmount;
+        copy.refundedAmount = refundedAmount;
+        copy.fullyRefunded = fullyRefunded;
+        return copy;
+    }
+
+    void restore(Bill snapshot) {
+        items = snapshot.items;
+        totalAmount = snapshot.totalAmount;
+        refundedAmount = snapshot.refundedAmount;
+        fullyRefunded = snapshot.fullyRefunded;
+    }
+
     public double returnItem(String itemName, int quantity) {
         for (Item item : new ArrayList<>(items)) {
             if (item.getItemName().equalsIgnoreCase(itemName)) {
@@ -63,11 +105,11 @@ public class Bill implements Serializable {
                     return 0;
                 }
 
-                double refundValue = item.getSellingPrice() * quantity;
+                double refundValue = item.getSellingAmount().multiply(java.math.BigDecimal.valueOf(quantity)).doubleValue();
                 int remainingQuantity = item.getQuantity() - quantity;
                 item.setQuantity(remainingQuantity);
-                this.totalAmount -= refundValue;
-                this.refundedAmount += refundValue;
+                this.totalAmount = Util.Money.of(this.totalAmount).subtract(Util.Money.of(refundValue)).doubleValue();
+                this.refundedAmount = Util.Money.of(this.refundedAmount).add(Util.Money.of(refundValue)).doubleValue();
 
                 if (remainingQuantity == 0) {
                     items.remove(item);

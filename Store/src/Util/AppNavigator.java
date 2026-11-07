@@ -24,7 +24,7 @@ public class AppNavigator {
 
     /**
      * Creates AppNavigator with the primary stage.
-     * 
+     *
      * @param primaryStage the main application stage
      */
     public AppNavigator(Stage primaryStage) {
@@ -51,6 +51,7 @@ public class AppNavigator {
      * Navigates to admin dashboard.
      */
     public void navigateToAdminDashboard() {
+        Session.require(Model.Role.ADMIN);
         Logger.info("AppNavigator", "Navigating to Admin Dashboard");
         try {
             AdminDashboardView adminView = new AdminDashboardView();
@@ -64,16 +65,17 @@ public class AppNavigator {
 
     /**
      * Navigates to manager dashboard.
-     * 
+     *
      * @param managerUsername the username of the logged-in manager
      * @param password manager's password
      * @param email manager's email
      * @param phone manager's phone
      */
     public void navigateToManagerDashboard(String managerUsername, String password, String email, String phone) {
+        Session.require(Model.Role.MANAGER, Model.Role.ADMIN);
         Logger.info("AppNavigator", "Navigating to Manager Dashboard for: " + managerUsername);
         try {
-            Manager manager = new Manager(managerUsername, password, email, phone, phone);
+            Manager manager = new Manager(managerUsername, password, managerUsername, email, phone);
             ManagerController managerController = new ManagerController(manager);
             ManagerDashboardView managerView = new ManagerDashboardView(primaryStage, managerController);
             managerView.setNavigator(this);
@@ -86,17 +88,18 @@ public class AppNavigator {
 
     /**
      * Navigates to cashier dashboard.
-     * 
+     *
      * @param cashierUsername the username of the logged-in cashier
      * @param password cashier's password
      * @param email cashier's email
      * @param phone cashier's phone
      */
     public void navigateToCashierDashboard(String cashierUsername, String password, String email, String phone) {
+        Session.require(Model.Role.CASHIER, Model.Role.ADMIN);
         Logger.info("AppNavigator", "Navigating to Cashier Dashboard for: " + cashierUsername);
         try {
             Inventory sharedInventory = context.getInventory();
-            Cashier cashier = new Cashier(cashierUsername, password, email, phone, "Electronics", sharedInventory);
+            Cashier cashier = new Cashier(cashierUsername, password, cashierUsername, email, phone, "Electronics", sharedInventory);
             CashierController cashierController = new CashierController(cashier, sharedInventory);
             CashierDashboardView cashierView = new CashierDashboardView(primaryStage, cashierController);
             cashierView.setNavigator(this);
@@ -112,24 +115,30 @@ public class AppNavigator {
      */
     public void logout() {
         Logger.info("AppNavigator", "User " + context.getCurrentUsername() + " logging out");
+        Session.clear();
         context.clearUserContext();
         navigateToLogin();
     }
 
     /**
      * Shows an error dialog.
-     * 
+     *
      * @param title the dialog title
      * @param message the error message
      */
     public void showError(String title, String message) {
         Logger.warn("AppNavigator", title + ": " + message);
-        // This would trigger a UI alert - implementation depends on View layer
+        javafx.scene.control.Alert alert = new javafx.scene.control.Alert(javafx.scene.control.Alert.AlertType.ERROR);
+        alert.setTitle(title);
+        alert.setHeaderText(null);
+        alert.setContentText(message);
+        View.AppTheme.dialog(alert);
+        alert.showAndWait();
     }
 
     /**
      * Gets the current shared context.
-     * 
+     *
      * @return the SharedContext instance
      */
     public SharedContext getContext() {
@@ -138,7 +147,7 @@ public class AppNavigator {
 
     /**
      * Gets the primary stage.
-     * 
+     *
      * @return the primary Stage
      */
     public Stage getPrimaryStage() {

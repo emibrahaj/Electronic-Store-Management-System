@@ -50,7 +50,17 @@ public class AuditLogger {
         }
         List<AuditLogEntry> entries = new ArrayList<>();
         try {
-            Files.lines(AUDIT_FILE_PATH).forEach(l -> Logger.debug(TAG, "Audit line: " + l));
+            try (java.util.stream.Stream<String> lines = Files.lines(AUDIT_FILE_PATH)) {
+                lines.forEach(line -> {
+                    String[] fields = line.split(" \\| ", 6);
+                    if (fields.length != 6) return;
+                    try {
+                        entries.add(new AuditLogEntry(java.time.LocalDateTime.parse(fields[0]),
+                                fields[1].substring(5), fields[2].substring(7), fields[3].substring(7),
+                                fields[4].substring(3), fields[5].substring(8)));
+                    } catch (RuntimeException e) { Logger.warn(TAG, "Skipping malformed audit entry"); }
+                });
+            }
         } catch (IOException e) {
             Logger.error(TAG, "Failed to read audit log", e);
         }

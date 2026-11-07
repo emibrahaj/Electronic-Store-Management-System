@@ -59,7 +59,8 @@ public class Supplier implements Serializable {
 
     // Add an item to the supplied items list
     public void addItem(Item item) {
-        suppliedItems.add(item);
+        if (suppliedItems.stream().noneMatch(existing -> existing.getItemName().equalsIgnoreCase(item.getItemName())))
+            suppliedItems.add(item);
     }
 
     // Get the list of supplied items
