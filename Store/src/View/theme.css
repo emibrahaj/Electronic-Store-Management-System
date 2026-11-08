@@ -131,3 +131,15 @@
 .product-tile:disabled { -fx-opacity: 0.72; }
 .product-tile:disabled .label { -fx-opacity: 1; }
 .product-tile:disabled .product-glyph { -fx-opacity: 1; }
+
+/* Shared dashboard presentation. */
+.card { -fx-background-radius: 12px; -fx-border-radius: 12px; -fx-border-color: #e9e4ed; }
+.sidebar { -fx-background-color: #f1e8ef; -fx-border-color: #e4d8e1; }
+.sidebar .button.selected { -fx-background-color: white; -fx-border-color: #e3c7d4; -fx-background-radius: 8px; -fx-border-radius: 8px; }
+.chart { -fx-padding: 8px 0 0 0; }
+.chart-plot-background { -fx-background-color: #fcf9fb; }
+.chart-vertical-grid-lines { -fx-stroke: transparent; }
+.chart-horizontal-grid-lines { -fx-stroke: #eee6ed; }
+.default-color0.chart-series-line { -fx-stroke: #a63663; -fx-stroke-width: 3px; }
+.default-color0.chart-line-symbol { -fx-background-color: #a63663, white; -fx-background-insets: 0, 2; -fx-padding: 4px; }
+.axis { -fx-tick-label-fill: #886675; -fx-tick-label-font-size: 11px; }

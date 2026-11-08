@@ -27,6 +27,7 @@ public class ManagerDashboardView {
     private Button addItemButton, addStockButton, removeItemButton, updateItemButton, logoutButton, viewStatisticsButton;
     private TableView<Item> inventoryTable;
     private TableView<Supplier> supplierTable;
+    private Label feedback;
 
     public ManagerDashboardView(Stage stage, ManagerController controller) {
         this.stage = stage;
@@ -34,12 +35,31 @@ public class ManagerDashboardView {
     }
 
     public void start(Stage stage) {
-        checkOutOfStockItems();
         setupInputFields();
         setupButtons();
         setupTables();
 
-        VBox mainLayout = createMainLayout();
+        VBox inventory = createMainLayout();
+        ScrollPane inventoryScroll = new ScrollPane(inventory); inventoryScroll.setFitToWidth(true);
+        Tab stockTab = new Tab("Inventory & suppliers", inventoryScroll); stockTab.setClosable(false);
+        Tab overviewTab = new Tab("Overview"); overviewTab.setClosable(false);
+        TabPane navigation = new TabPane(overviewTab, stockTab);
+        Runnable refreshOverview = () -> {
+            Button add = AppTheme.primary(new Button("Add a product"));
+            add.setOnAction(e -> { navigation.getSelectionModel().select(stockTab); itemNameField.requestFocus(); });
+            Button stock = new Button("Manage inventory");
+            stock.setOnAction(e -> navigation.getSelectionModel().select(stockTab));
+            Button reports = new Button("Sales reports"); reports.setOnAction(e -> openStatisticsView());
+            ScrollPane overviewScroll = new ScrollPane(StoreOverview.create(controller.getAllBills(), controller.getAllItems(), add, stock, reports));
+            overviewScroll.setFitToWidth(true);
+            overviewTab.setContent(overviewScroll);
+        };
+        refreshOverview.run();
+        overviewTab.setOnSelectionChanged(e -> { if (overviewTab.isSelected()) refreshOverview.run(); });
+        VBox mainLayout = new VBox(20,
+                AppTheme.header("Stockroom", "Your store, at a glance", viewStatisticsButton, logoutButton), navigation);
+        mainLayout.setPadding(new Insets(24));
+        VBox.setVgrow(navigation, Priority.ALWAYS);
         ScrollPane scroll = new ScrollPane(mainLayout);
         scroll.setFitToWidth(true); scroll.setFitToHeight(true);
         Scene scene = new Scene(scroll, 1180, 860);
@@ -146,9 +166,12 @@ public class ManagerDashboardView {
         inventoryTab.setClosable(false); suppliersTab.setClosable(false);
         TabPane records = new TabPane(inventoryTab, suppliersTab);
         records.setMinHeight(260); VBox.setVgrow(records, Priority.ALWAYS);
-        layout.getChildren().addAll(
-            AppTheme.header("Stockroom", "Products & the people who supply them", viewStatisticsButton, logoutButton),
-            AppTheme.card(createInputGrid(), createButtonBox()), searchField, records);
+        feedback = new Label(); feedback.setWrapText(true);
+        feedback.setVisible(false); feedback.setManaged(false); feedback.setMaxWidth(Double.MAX_VALUE);
+        searchField.setPromptText("Search products by name, category, SKU or barcode");
+        searchField.setMaxWidth(Double.MAX_VALUE);
+        layout.getChildren().addAll(feedback,
+            AppTheme.card(AppTheme.title("Product details"), AppTheme.muted("Select a product below to update its prices, stock or barcode."), createInputGrid(), createButtonBox()), searchField, records);
         return layout;
     }
 
@@ -175,7 +198,14 @@ public class ManagerDashboardView {
     }
 
     private HBox createButtonBox() {
-        return new HBox(10, addItemButton, updateItemButton, addStockButton, removeItemButton);
+        Button clear = new Button("Clear form");
+        clear.setOnAction(e -> {
+            inventoryTable.getSelectionModel().clearSelection();
+            for (TextField field : new TextField[]{itemNameField, categoryField, supplierField, supplierContactField,
+                    purchasePriceField, sellingPriceField, stockField, barcodeField}) field.clear();
+            itemNameField.requestFocus();
+        });
+        return new HBox(10, addItemButton, updateItemButton, addStockButton, removeItemButton, clear);
     }
 
     private void openStatisticsView() {
@@ -222,18 +252,6 @@ public class ManagerDashboardView {
         });
     }
 
-    private void checkOutOfStockItems() {
-        List<Item> outOfStockItems = controller.getManager().getInventory().getItems().stream()
-                .filter(item -> item.getStock() <= 0)
-                .toList();
-
-        if (!outOfStockItems.isEmpty()) {
-            showAlert("Stock Alert", "The following items are out of stock:\n" + outOfStockItems.stream()
-                    .map(Item::getItemName)
-                    .reduce("", (a, b) -> a + "- " + b + "\n"));
-        }
-    }
-
     private void addItemToInventory() {
         if (!validateInput()) return;
 
@@ -273,7 +291,7 @@ public class ManagerDashboardView {
     }
 
     private void refreshInventoryTable() {
-        inventoryTable.setItems(FXCollections.observableArrayList(controller.getManager().getInventory().getItems()));
+        filterInventory(searchField.getText());
     }
 
     private void refreshSupplierTable() {
@@ -283,7 +301,8 @@ public class ManagerDashboardView {
     private void filterInventory(String query) {
         inventoryTable.setItems(FXCollections.observableArrayList(
                 controller.getManager().getInventory().getItems().stream()
-                        .filter(item -> item.getItemName().toLowerCase().contains(query.toLowerCase()))
+                        .filter(item -> (item.getItemName()+" "+item.getCategory()+" "+item.getSku()+" "+item.getBarcode())
+                                .toLowerCase(java.util.Locale.ROOT).contains(query.trim().toLowerCase(java.util.Locale.ROOT)))
                         .toList()));
     }
 
@@ -306,11 +325,9 @@ public class ManagerDashboardView {
     }
 
     private void showAlert(String title, String message) {
-        Alert alert = new Alert(Alert.AlertType.INFORMATION);
-        alert.setTitle(title);
-        alert.setContentText(message);
-        AppTheme.dialog(alert);
-        alert.showAndWait();
+        feedback.setText(message == null ? "Unable to complete this action." : message);
+        feedback.getStyleClass().setAll("checkout-notice", title.equals("Success") ? "notice-success" : "notice-error");
+        feedback.setVisible(true); feedback.setManaged(true);
     }
 
     private boolean validateInput() {

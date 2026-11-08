@@ -37,6 +37,12 @@ java "-Dstore.home=$PWD/Store" -cp .build/classes DAO.PasswordMigrationUtil
 
 This preserves existing hashes and creates `passwords.txt.backup` once. Keep credentials and that backup private.
 
+## Dashboard overview
+
+Administrators and managers open on an Overview with today's net sales, transaction count, catalog size, and low-stock count. A seven-day sales chart includes days without sales; returns adjust the original sale date. Stock Watch highlights the four products with the lowest stock (five units or fewer).
+
+Quick actions open staff management, inventory, or reports according to the signed-in role. Managers use the Inventory & suppliers tab to edit products, search by name/category/SKU/barcode, and see inline action feedback. Return to Overview to refresh its figures.
+
 ## Checkout
 
 1. Click a product tile to add one unit. Search by product name/category, scan a barcode, or enter a SKU in the single search field. Press Enter to add an exact match or the only search result. Category filters narrow the catalog; Ctrl+F focuses search.

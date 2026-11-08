@@ -45,6 +45,13 @@ public class UiSmokeTest extends Application {
             navigator.navigateToLogin(); capture(stage,"login");
             new AdminDashboardView().show(stage);
             capture(stage, "admin");
+            check(stage.getScene().lookup("#store-overview") != null, "Admin opens on overview");
+            button(stage, "admin-staff").fire();
+            check(stage.getScene().lookup("#store-overview") == null, "Staff navigation opens employee management");
+            capture(stage, "admin-staff");
+            button(stage, "admin-overview").fire();
+            stage.getScene().getRoot().applyCss(); stage.getScene().getRoot().layout();
+            check(stage.getScene().lookup("#weekly-sales-chart") != null, "Overview navigation restores sales chart");
             Manager manager = new Manager("manager", "password", "Manager", "m@example.com", "0123456789");
             ManagerController controller = new ManagerController(manager);
             Item laptop=new Item("Laptop","Computers","Tech Supply",500,699.99,12); laptop.setBarcode("1234567890");
@@ -56,6 +63,11 @@ public class UiSmokeTest extends Application {
             manager.addItemToInventory(new Item("Headphones","Audio","Tech Supply",40,79.99,9),"sales@example.com");
             new ManagerDashboardView(stage, controller).start(stage);
             capture(stage, "manager");
+            check(stage.getScene().lookup("#store-overview") != null, "Manager opens on overview");
+            javafx.scene.control.TabPane managerTabs = (javafx.scene.control.TabPane) stage.getScene().lookup(".tab-pane");
+            managerTabs.getSelectionModel().select(1);
+            capture(stage, "manager-inventory");
+            managerTabs.getSelectionModel().select(0);
             new StatisticsView(stage, controller).show();
             capture(stage, "statistics");
             SharedContext.getInstance().getInventory().findItemByName("Bluetooth speaker").setStock(0);
